@@ -1,4 +1,5 @@
-# ZimaOS: App Store → Custom Install → Import, paste this file, then set ORIGIN.
+# App only, for ZimaOS App Store → Custom Install → Import. Set ORIGIN.
+# The README's SSH install uses a combined file with Tailscale instead.
 name: auto
 services:
   auto:
@@ -8,7 +9,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - /DATA/AppData/auto:/app/data
+      - /DATA/AppData/auto/data:/app/data
     environment:
       TZ: America/New_York
       # The exact URL you open the app with (the Tailscale HTTPS name). Form posts
