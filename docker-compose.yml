@@ -1,0 +1,17 @@
+# ZimaOS: App Store → Custom Install → Import, paste this file, then set ORIGIN.
+name: auto
+services:
+  auto:
+    image: ghcr.io/troylairson/auto:latest
+    container_name: auto
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - /DATA/AppData/auto:/app/data
+    environment:
+      TZ: America/New_York
+      # The exact URL you open the app with (the Tailscale HTTPS name). Form posts
+      # are rejected when the browser's origin doesn't match this.
+      ORIGIN: https://zima.your-tailnet.ts.net
+      NTFY_URL: https://ntfy.sh

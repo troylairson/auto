@@ -34,7 +34,7 @@ Confirmed: hosted on the always-on **ZimaOS** box, **ntfy** for push, **TypeScri
 | Styling | Tailwind CSS, mobile-first | Fast to build, looks fine without design effort |
 | Auth | Simple per-person login (username + password, argon2 hash, long-lived session cookie) | Know *who* logged a service, per-person notification prefs; no OAuth complexity |
 | Scheduler | In-process daily job (`node-cron`) | No separate worker or queue needed at this scale |
-| Notifications | **ntfy** push via ntfy.sh, one long random topic per person; email (SMTP) optional and off by default | Free phone push (iOS and Android) with no app store work; ntfy.sh delivers on iOS without extra relay setup |
+| Notifications | **ntfy** push via ntfy.sh, one long random topic per person | Free phone push (iOS and Android) with no app store work; ntfy.sh delivers on iOS without extra relay setup |
 | Units | Miles only | No unit conversion anywhere |
 | Vehicle data | NHTSA vPIC API (free) for VIN decode; NHTSA Recalls API (free) later | No API keys, no cost |
 | Files | Receipt images stored on disk in a mounted volume | Simple; included in backups |
@@ -361,18 +361,24 @@ That makes the core logic easy to unit test with fixed dates.
 
 ## 9. Implementation plan
 
-### Phase 0: Skeleton (½ day)
+**Status:** Phases 0–3 are built, plus the nightly backup, PWA manifest and per-year spend
+from Phase 4. Differences from the plan:
+- The first login is created on a one-time `/setup` page instead of with a CLI script. Later logins are added in Settings.
+- Email is left out; ntfy only.
+- Due thresholds are constants in `src/lib/due.ts`, not settings.
+
+### Phase 0: Skeleton (½ day) ✅
 - SvelteKit + TypeScript + Tailwind + Drizzle + SQLite set up; Dockerfile and compose with `./data` volume.
 - Migrations, seed loader for templates.
-- Login page, `users` table, CLI script `npm run user:add` (no sign-up page needed).
+- Login page, `users` table, first-run `/setup` page.
 
-### Phase 1: Vehicles and schedules (1–2 days)
+### Phase 1: Vehicles and schedules (1–2 days) ✅
 - Add/edit/archive vehicle (manual entry).
 - Seed templates: generic gas/diesel/hybrid/EV **plus "2021 Honda Pilot" and "2011 Toyota Tacoma V6"** (section 5.5).
 - Copy template into `maintenance_items` on create; edit schedule page (with "verified" flag).
 - Odometer readings + quick "update mileage" (with oil life % / Minder code for Minder vehicles).
 
-### Phase 2: Records and due logic, the MVP (2 days)
+### Phase 2: Records and due logic, the MVP (2 days) ✅
 - `due.ts` with thorough tests (mileage projection, whichever-first, first-due, unknown/baseline, snooze,
   oil-life projection, Minder-code parsing and overrides).
 - Log service form (multiple items, unscheduled work, cost, notes).
@@ -380,20 +386,20 @@ That makes the core logic easy to unit test with fixed dates.
 - Catch-up checklist on vehicle create. Use it to enter the Pilot and Tacoma.
 - **At this point the app works without reminders. Start using it.**
 
-### Phase 3: Reminders (1 day)
-- ntfy push adapter (email adapter optional/later); per-user topic settings + "send test notification" button.
+### Phase 3: Reminders (1 day) ✅
+- ntfy push adapter; per-user topic settings + "send test notification" button.
 - Daily job with state-change detection and `notification_log`; weekly digest; stale-odometer nudge.
 - Deep links into pre-filled log form. `.ics` calendar feed.
 
 ### Phase 4: Nice-to-haves (as wanted)
 - VIN decode via NHTSA vPIC.
 - Receipt photo uploads + thumbnails.
-- PWA manifest + service worker (installable, home-screen icon).
+- PWA manifest ✅ + service worker (offline shell).
 - Open recalls check (NHTSA Recalls API by year/make/model) shown on vehicle Info tab, checked
   weekly with a push when a new recall appears. Especially worthwhile for the 2011 Tacoma.
 - CSV export of history (useful when selling a car); printable service history page.
-- Spend reports (per vehicle per year).
-- Nightly backup job + documented restore.
+- Spend reports: per vehicle per year ✅ (Info tab); charts later.
+- Nightly backup job + documented restore ✅.
 
 ## 10. Deployment (ZimaOS)
 
@@ -440,13 +446,11 @@ random and messages contain only vehicle/item names.
 Backups: the nightly job writes `/DATA/AppData/auto/backups/auto-YYYYMMDD.db` and keeps 30 copies.
 To keep a copy off the box, point ZimaOS's built-in backup or sync at `/DATA/AppData/auto`.
 
-## 11. Remaining questions (small, can be answered during Phase 1)
+## 11. Answers so far
 
-1. **Pilot**: trim (6-speed vs 9-speed transmission) and AWD or 2WD? This decides the
-   transmission fluid item and whether rear differential (code 6) applies.
-2. **Tacoma**: 4x4 or 4x2, and automatic or manual? This decides the front diff, transfer case
-   and transmission items.
-3. **Tacoma use**: towing, off-road, or mostly short trips? If so, use the severe profile.
-4. **Current mileage** on both, plus whatever service history you have, for the catch-up checklist.
-5. **Time zone** for the reminder schedule.
-6. **Household members** who need logins and ntfy topics.
+- Pilot: 9-speed, AWD, so the rear differential (Minder 6) item applies.
+- Tacoma: 4x4, no towing or off-road, so normal usage; the front diff and transfer case items apply.
+  Automatic or manual not yet confirmed: the "Transmission fluid" item covers either.
+- Time zone: Eastern (`America/New_York`).
+- Logins: Troy and Lexi.
+- Current mileage and service history: entered in the app when adding each vehicle (catch-up checklist).
