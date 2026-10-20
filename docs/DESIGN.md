@@ -22,21 +22,24 @@ maintenance for the vehicles in one household.
 
 ## 2. Key design decisions
 
+Confirmed: hosted on the always-on **ZimaOS** box, **ntfy** for push, **TypeScript**,
+**miles only**. Household vehicles: **2021 Honda Pilot** and **2011 Toyota Tacoma TRD Sport**
+(see section 5.5).
+
 | Decision | Choice | Why |
 |---|---|---|
-| Hosting | Self-hosted Docker container on a home server/NAS/Raspberry Pi (or a $5 VPS) | Personal data, near-zero cost |
+| Hosting | Docker container on the home ZimaOS machine (see section 10) | Personal data, already always on, zero cost |
 | Remote access | Tailscale (or Cloudflare Tunnel + Access) | Keeps the app off the public internet, so the app's own auth can stay minimal |
 | Stack | **SvelteKit** (TypeScript, full-stack) + **SQLite** via **Drizzle ORM** | One codebase, one process, server-rendered forms work without much JS, small footprint |
 | Styling | Tailwind CSS, mobile-first | Fast to build, looks fine without design effort |
 | Auth | Simple per-person login (username + password, argon2 hash, long-lived session cookie) | Know *who* logged a service, per-person notification prefs; no OAuth complexity |
 | Scheduler | In-process daily job (`node-cron`) | No separate worker or queue needed at this scale |
-| Notifications | **ntfy** push (self-hosted or ntfy.sh) + optional **email** (SMTP) | ntfy gives free phone push with no app store dev work; email for a weekly digest |
+| Notifications | **ntfy** push via ntfy.sh, one long random topic per person; email (SMTP) optional and off by default | Free phone push (iOS and Android) with no app store work; ntfy.sh delivers on iOS without extra relay setup |
+| Units | Miles only | No unit conversion anywhere |
 | Vehicle data | NHTSA vPIC API (free) for VIN decode; NHTSA Recalls API (free) later | No API keys, no cost |
 | Files | Receipt images stored on disk in a mounted volume | Simple; included in backups |
 | Backups | Nightly SQLite `.backup` + uploads directory copied to a backup location | Lose at most one day |
 
-Alternative if you prefer Python: FastAPI + HTMX + SQLModel + APScheduler would
-work the same way. The data model and logic below don't depend on the stack.
 
 ## 3. Core concepts
 
@@ -62,12 +65,16 @@ vehicles
   fuel_type  ENUM(gas, diesel, hybrid, ev),
   usage_profile ENUM(normal, severe),
   in_service_date DATE NULL,       -- purchase/first-registration date, used for age-based items
+  drivetrain ENUM(2wd, 4wd, awd) NULL, transmission TEXT NULL,
+  maintenance_minder BOOL,         -- Honda-style oil-life / code system (section 5.6)
   primary_driver_id -> users NULL,
   archived_at NULL,                -- sold/retired: hidden but history kept
   notes, photo_path NULL, created_at
 
 odometer_readings
   id, vehicle_id, reading_date, mileage INT,
+  oil_life_pct INT NULL,           -- minder vehicles only: % shown on the dash
+  minder_code TEXT NULL,           -- minder vehicles only: e.g. "B13" if displayed
   source ENUM(manual, service, initial),
   created_by -> users
 
@@ -79,13 +86,17 @@ template_items
   interval_miles INT NULL, interval_months INT NULL,
   severe_interval_miles INT NULL, severe_interval_months INT NULL,
   first_due_miles INT NULL,        -- e.g. first coolant change at 100k, then every 50k
+  first_due_months INT NULL,
+  minder_code TEXT NULL,           -- "A", "B", "1".."7" for minder vehicles
+  applies_to_drivetrain NULL,      -- e.g. rear diff only on awd/4wd
   notes                            -- "check owner's manual for spec"
 
 maintenance_items                  -- per-vehicle schedule
   id, vehicle_id, template_item_id NULL (NULL = custom item),
   name, category,
   interval_miles INT NULL, interval_months INT NULL,
-  first_due_miles INT NULL,
+  first_due_miles INT NULL, first_due_months INT NULL,
+  minder_code TEXT NULL,
   enabled BOOL,
   baseline_date DATE NULL,         -- "last done" when there's no service record yet
   baseline_mileage INT NULL,
@@ -95,6 +106,7 @@ maintenance_items                  -- per-vehicle schedule
 service_records
   id, vehicle_id, service_date, mileage INT,
   vendor NULL ("Jiffy Lube", "DIY"), total_cost_cents INT NULL,
+  minder_code NULL,                -- code that prompted the visit, e.g. "B13"
   notes, created_by -> users, created_at
 
 service_record_items               -- many-to-many: one visit, many items
@@ -198,6 +210,84 @@ On "Add vehicle," after picking the template, show a **"Catch-up" checklist**: e
 item with a "Last done: [date] [mileage] / Don't know / Never" field. Answers fill
 `baseline_*`. "Don't know" leaves the item Unknown. The dashboard lists it as "do now
 to establish a baseline," which is good advice anyway for a newly bought used car.
+The same checklist is how the two existing vehicles get set up on day one: fill it
+in from whatever receipts and memory are available.
+
+### 5.5 Household vehicle templates
+
+These two ship as named templates next to the generic ones. The intervals come from
+recollection of the manufacturer schedules plus common practice for vehicles of this age.
+**Each item is flagged "verify against manual" until it has been checked against the Honda
+owner's manual / Toyota Warranty & Maintenance Guide**. Then the flag is cleared in the
+schedule editor.
+
+#### 2021 Honda Pilot (3.5L V6, Maintenance Minder)
+
+The Pilot doesn't use a fixed schedule. Its **Maintenance Minder** shows oil life %
+and a code (main item A or B, plus sub-items 1–7) when service is due. The app follows
+the Minder (section 5.6). Fixed intervals below are only **fallback estimates**, used when no
+Minder information has been entered.
+
+| Code | Item | Fallback estimate |
+|---|---|---|
+| A | Engine oil | Oil-life %, else 7,500 mi / 12 mo (Honda: at least yearly) |
+| B | Oil + filter + inspection (brakes, parking brake, steering/suspension, boots, hoses, fluids, exhaust) | Every other oil change, ~15,000 mi / 12 mo |
+| 1 | Tire rotation | 7,500 mi |
+| 2 | Engine air filter, cabin air filter, drive belt inspection | Cabin 15,000 mi / 12 mo; engine 30,000 mi |
+| 3 | Transmission fluid (6-speed or 9-speed depending on trim, different fluid) | 30,000 mi |
+| 4 | Spark plugs, timing belt + water pump inspection, valve clearance | ~100,000 mi / 120 mo. Belt, tensioner and water pump are usually done together |
+| 5 | Engine coolant | First 120,000 mi / 120 mo, then 60,000 mi / 60 mo |
+| 6 | Rear differential fluid (**AWD only**) | 30,000 mi. Honda has a 2024 service bulletin for 2016–22 Pilot rear differentials |
+| 7 | Brake fluid | 36 mo |
+| — | Wiper blades | 12 mo |
+| — | Battery test | 12 mo once the vehicle is over 3 years old (now) |
+
+#### 2011 Toyota Tacoma TRD Sport (4.0L V6, timing chain)
+
+Toyota uses a fixed schedule. The 4.0L V6 has a **timing chain**, so there's no timing belt item.
+At 15 years old, age-related inspections are added and the "inspect" items Toyota lists
+are turned into concrete replace intervals.
+
+| Item | Interval | Note |
+|---|---|---|
+| Engine oil & filter | 5,000 mi / 6 mo | Toyota spec for this era; new drain plug gasket |
+| Tire rotation | 5,000 mi | Do it with every oil change |
+| Multi-point inspection (brakes, ball joints, steering linkage, boots, exhaust) | 15,000 mi / 12 mo | |
+| Cabin air filter | 15,000 mi / 12 mo | |
+| Engine air filter | 30,000 mi / 36 mo | |
+| Rear differential oil | 30,000 mi | Toyota lists "inspect", or 15k if towing |
+| Front differential + transfer case oil | 30,000 mi | **4x4 only** |
+| Propeller shaft grease | 5,000 mi | 4x4 / towing / off-road, disabled by default |
+| Automatic transmission fluid (or manual gear oil) | 60,000 mi | Toyota lists "inspect"; drain-and-fill recommended |
+| Brake fluid | 36 mo | |
+| Engine coolant (Toyota SLLC) | First 100,000 mi / 120 mo, then 50,000 mi / 60 mo | Almost certainly past the first one, so use the catch-up checklist |
+| Spark plugs (iridium) | 120,000 mi | |
+| Drive belt inspection | 60,000 mi / 60 mo | |
+| Frame & underbody corrosion inspection | 12 mo | This truck generation is known for frame rust |
+| Battery test, hoses, shocks | 12 mo | Age-related |
+| Wiper blades | 12 mo | |
+
+Set `usage_profile = severe` for the Tacoma if it tows, goes off-road, or mostly does
+short trips. That switches oil to 5,000 mi / 6 mo with shorter diff and ATF intervals.
+
+### 5.6 Maintenance Minder support (Pilot)
+
+Mirror what the car says. Don't try to out-guess its algorithm.
+
+- **Oil life %**: the "Update mileage" sheet for a Minder vehicle has an optional
+  "Oil life %" field. After an oil change, oil life resets to 100%. The app
+  fits a %-per-day rate from readings since then and projects the date the car will hit 15%
+  (the Minder's own "due soon" point) and 5% ("due"). That projection replaces
+  the fixed interval for the A/B item. The 12-month cap still applies.
+- **Minder codes**: when the dash shows a code like **B13**, enter it on the mileage sheet. The
+  app parses it (main item `B`, sub-items `1`, `3`). Every item with a matching
+  `minder_code` immediately becomes **Due**, whatever its fallback estimate says, and a
+  push goes out.
+- **Logging service**: the Log service form for a Minder vehicle has a "Minder code"
+  field. Typing `B13` checks the matching items automatically. The code is saved on the record,
+  so the history reads like the car's own log.
+- **Without Minder input**: items fall back to the estimates in 5.5. Their due dates show as
+  "est." so it's clear the car has the final say.
 
 ## 6. Reminders
 
@@ -278,18 +368,20 @@ That makes the core logic easy to unit test with fixed dates.
 
 ### Phase 1: Vehicles and schedules (1–2 days)
 - Add/edit/archive vehicle (manual entry).
-- Copy template into `maintenance_items` on create; edit schedule page.
-- Odometer readings + quick "update mileage."
+- Seed templates: generic gas/diesel/hybrid/EV **plus "2021 Honda Pilot" and "2011 Toyota Tacoma V6"** (section 5.5).
+- Copy template into `maintenance_items` on create; edit schedule page (with "verified" flag).
+- Odometer readings + quick "update mileage" (with oil life % / Minder code for Minder vehicles).
 
 ### Phase 2: Records and due logic, the MVP (2 days)
-- `due.ts` with thorough tests (mileage projection, whichever-first, first-due, unknown/baseline, snooze).
+- `due.ts` with thorough tests (mileage projection, whichever-first, first-due, unknown/baseline, snooze,
+  oil-life projection, Minder-code parsing and overrides).
 - Log service form (multiple items, unscheduled work, cost, notes).
 - Vehicle detail: Schedule + History tabs. Dashboard "Up next."
-- Catch-up checklist on vehicle create.
+- Catch-up checklist on vehicle create. Use it to enter the Pilot and Tacoma.
 - **At this point the app works without reminders. Start using it.**
 
 ### Phase 3: Reminders (1 day)
-- ntfy push + SMTP email adapters; per-user settings.
+- ntfy push adapter (email adapter optional/later); per-user topic settings + "send test notification" button.
 - Daily job with state-change detection and `notification_log`; weekly digest; stale-odometer nudge.
 - Deep links into pre-filled log form. `.ics` calendar feed.
 
@@ -297,38 +389,64 @@ That makes the core logic easy to unit test with fixed dates.
 - VIN decode via NHTSA vPIC.
 - Receipt photo uploads + thumbnails.
 - PWA manifest + service worker (installable, home-screen icon).
-- Open recalls check (NHTSA Recalls API by year/make/model) shown on vehicle Info tab.
+- Open recalls check (NHTSA Recalls API by year/make/model) shown on vehicle Info tab, checked
+  weekly with a push when a new recall appears. Especially worthwhile for the 2011 Tacoma.
 - CSV export of history (useful when selling a car); printable service history page.
 - Spend reports (per vehicle per year).
 - Nightly backup job + documented restore.
 
-## 10. Deployment
+## 10. Deployment (ZimaOS)
+
+ZimaOS runs Docker apps and can install a custom app from a Docker Compose file. Building
+images on the ZimaOS box itself is awkward, so images are built elsewhere:
+
+1. **Build**: a GitHub Actions workflow builds the image on every push to `main` and
+   publishes it to GitHub Container Registry as `ghcr.io/troylairson/auto:latest` (linux/amd64,
+   which matches Zima hardware). The image holds only app code, never data, so the
+   package can be public. Otherwise, run `docker login ghcr.io` once on the box over SSH.
+2. **Install**: in the ZimaOS dashboard, use App Store → Custom Install → Import, paste the compose
+   file below, and install.
+3. **Data**: everything persistent lives in `/DATA/AppData/auto` (database, uploads,
+   backups), so reinstalling or updating the container never touches it.
+4. **Remote access**: install **Tailscale** from the ZimaOS app store, and on phones too.
+   `tailscale serve` gives the app an HTTPS URL on the tailnet, which the PWA install and
+   phone camera upload need.
+5. **Update**: pull the new image and recreate the container from the ZimaOS app settings, or
+   run `docker compose pull && docker compose up -d` over SSH.
 
 ```yaml
-# docker-compose.yml
+# docker-compose.yml (ZimaOS custom install)
+name: auto
 services:
   auto:
-    build: .
+    image: ghcr.io/troylairson/auto:latest
+    container_name: auto
     restart: unless-stopped
     ports: ["3000:3000"]
-    volumes: ["./data:/app/data"]
+    volumes:
+      - /DATA/AppData/auto:/app/data
     environment:
-      TZ: America/Chicago          # reminders fire on local time
-      ORIGIN: https://auto.your-tailnet.ts.net
-      SESSION_SECRET: ...
-      NTFY_URL: https://ntfy.sh    # or self-hosted
-      SMTP_URL: smtp://user:pass@smtp.example.com:587   # optional
+      TZ: America/Chicago                  # set to local zone: reminders fire at 7:00 local
+      ORIGIN: https://auto.<tailnet>.ts.net
+      SESSION_SECRET: <random 32+ chars>
+      NTFY_URL: https://ntfy.sh
 ```
 
-- Reach it from phones via Tailscale (MagicDNS + `tailscale serve` provides HTTPS).
-- Backups: nightly `sqlite3 auto.db ".backup backups/auto-YYYYMMDD.db"`, keep 30 copies, and sync
-  `data/` to cloud storage or another machine.
+ntfy setup: install the ntfy app on each phone and subscribe to that person's topic. Topics
+are generated by the app (e.g. `auto-troy-8f3k2q9x…`) and shown in Settings with a "send
+test" button. Anyone who knows a topic name can read it on ntfy.sh, so topics are long and
+random and messages contain only vehicle/item names.
 
-## 11. Open questions
+Backups: the nightly job writes `/DATA/AppData/auto/backups/auto-YYYYMMDD.db` and keeps 30 copies.
+To keep a copy off the box, point ZimaOS's built-in backup or sync at `/DATA/AppData/auto`.
 
-1. **Hosting target**: is there an always-on machine at home (NAS, Pi, mini PC), or a VPS?
-2. **Notification preference**: is ntfy push OK, or would email/SMS only be better?
-3. **Stack preference**: SvelteKit/TypeScript as proposed, or Python?
-4. **Units**: miles only, or should km be supported per vehicle?
-5. **Which vehicles?** Their exact makes/models let us replace generic templates with
-   manual-accurate ones from the start.
+## 11. Remaining questions (small, can be answered during Phase 1)
+
+1. **Pilot**: trim (6-speed vs 9-speed transmission) and AWD or 2WD? This decides the
+   transmission fluid item and whether rear differential (code 6) applies.
+2. **Tacoma**: 4x4 or 4x2, and automatic or manual? This decides the front diff, transfer case
+   and transmission items.
+3. **Tacoma use**: towing, off-road, or mostly short trips? If so, use the severe profile.
+4. **Current mileage** on both, plus whatever service history you have, for the catch-up checklist.
+5. **Time zone** for the reminder schedule.
+6. **Household members** who need logins and ntfy topics.
