@@ -102,6 +102,7 @@ export const templateItems = sqliteTable('template_items', {
 	minderCode: text('minder_code'),
 	drivetrains: text('drivetrains'), // comma list, e.g. "4wd,awd"; null = all
 	enabledByDefault: integer('enabled_by_default', { mode: 'boolean' }).notNull().default(true),
+	core: integer('core', { mode: 'boolean' }).notNull().default(true), // a "usual" item, always shown
 	notes: text('notes')
 });
 
@@ -125,6 +126,7 @@ export const maintenanceItems = sqliteTable(
 		minderCode: text('minder_code'),
 		enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
 		verified: integer('verified', { mode: 'boolean' }).notNull().default(false),
+		core: integer('core', { mode: 'boolean' }).notNull().default(true),
 		baselineDate: text('baseline_date'),
 		baselineMileage: integer('baseline_mileage'),
 		neverDone: integer('never_done', { mode: 'boolean' }).notNull().default(false),

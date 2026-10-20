@@ -35,7 +35,7 @@ export const actions: Actions = {
 		const value = readItem(f);
 		if (!f.ok) return fail(400, { itemId: item.id, errors: f.errors });
 		db.update(maintenanceItems)
-			.set({ ...value, enabled: f.bool('enabled'), verified: f.bool('verified') })
+			.set({ ...value, enabled: f.bool('enabled'), verified: f.bool('verified'), core: f.bool('core') })
 			.where(eq(maintenanceItems.id, item.id))
 			.run();
 		return { savedId: item.id };

@@ -4,6 +4,7 @@ import {
 	compareDue,
 	computeDue,
 	estimateMileage,
+	isSurfaced,
 	parseMinderCode,
 	type DueContext,
 	type ItemInput
@@ -241,5 +242,35 @@ describe('Maintenance Minder', () => {
 			ctx(35500, 30, { minderReadings: readings })
 		);
 		expect(r.status).toBe('ok');
+	});
+});
+
+describe('isSurfaced', () => {
+	it('always shows usual items, even when unknown', () => {
+		expect(isSurfaced(true, computeDue(item(), null, ctx(1000)))).toBe(true);
+	});
+	it('hides other items while unknown or OK', () => {
+		expect(isSurfaced(false, computeDue(item(), null, ctx(1000)))).toBe(false);
+		expect(isSurfaced(false, computeDue(item(), { date: '2026-09-01', mileage: 0 }, ctx(1000)))).toBe(
+			false
+		);
+	});
+	it('surfaces other items once they are coming due', () => {
+		expect(isSurfaced(false, computeDue(item(), { date: '2026-09-01', mileage: 0 }, ctx(4500)))).toBe(
+			true
+		);
+		expect(isSurfaced(false, computeDue(item(), { date: '2026-01-01', mileage: 0 }, ctx(1000)))).toBe(
+			true
+		);
+	});
+	it('keeps a snoozed item surfaced so it shows as snoozed', () => {
+		const r = computeDue(item({ snoozedUntil: '2026-11-01' }), { date: '2026-01-01', mileage: 0 }, ctx(1000));
+		expect(r.status).toBe('snoozed');
+		expect(isSurfaced(false, r)).toBe(true);
+	});
+	it('surfaces a Minder-coded item when the dash shows its code', () => {
+		const trans = item({ intervalMiles: 30000, intervalMonths: null, minderCode: '3' });
+		const r = computeDue(trans, null, ctx(36000, 30, { minderReadings: [{ date: '2026-10-18', mileage: 36000, minderCode: 'B13' }] }));
+		expect(isSurfaced(false, r)).toBe(true);
 	});
 });

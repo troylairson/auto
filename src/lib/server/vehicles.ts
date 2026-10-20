@@ -16,6 +16,7 @@ import {
 	compareDue,
 	computeDue,
 	estimateMileage,
+	isSurfaced,
 	type DoneEvent,
 	type DueResult,
 	type MileageEstimate
@@ -25,7 +26,8 @@ export type ItemWithDue = { item: MaintenanceItem; due: DueResult };
 export type VehicleOverview = {
 	vehicle: Vehicle;
 	estimate: MileageEstimate;
-	items: ItemWithDue[]; // enabled items, sorted worst/soonest first
+	items: ItemWithDue[]; // usual items plus others coming due, sorted worst/soonest first
+	moreItems: ItemWithDue[]; // enabled non-usual items that aren't coming due yet
 	disabledItems: MaintenanceItem[];
 };
 
@@ -96,11 +98,17 @@ export function getOverview(vehicle: Vehicle, today: string): VehicleOverview {
 		vehicleStartDate: vehicleStartDate(vehicle),
 		minderReadings: vehicle.maintenanceMinder ? readings : null
 	};
-	const items = all
+	const enabled = all
 		.filter((i) => i.enabled)
 		.map((item) => ({ item, due: computeDue(item, lastDone.get(item.id) ?? null, ctx) }))
 		.sort((a, b) => compareDue(a.due, b.due));
-	return { vehicle, estimate, items, disabledItems: all.filter((i) => !i.enabled) };
+	return {
+		vehicle,
+		estimate,
+		items: enabled.filter((i) => isSurfaced(i.item.core, i.due)),
+		moreItems: enabled.filter((i) => !isSurfaced(i.item.core, i.due)),
+		disabledItems: all.filter((i) => !i.enabled)
+	};
 }
 
 export function listTemplates() {
@@ -156,6 +164,7 @@ export function createVehicle(
 					firstDueMonths: t.firstDueMonths,
 					minderCode: t.minderCode,
 					enabled: t.enabledByDefault,
+					core: t.core,
 					notes: t.notes
 				})
 				.run();
@@ -187,6 +196,7 @@ export function resetItemToTemplate(item: MaintenanceItem, vehicle: Vehicle) {
 			firstDueMiles: t.firstDueMiles,
 			firstDueMonths: t.firstDueMonths,
 			minderCode: t.minderCode,
+			core: t.core,
 			notes: t.notes
 		})
 		.where(eq(maintenanceItems.id, item.id))

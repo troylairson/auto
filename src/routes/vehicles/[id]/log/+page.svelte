@@ -31,10 +31,30 @@
 		const codes = parseMinderCode(minderCode);
 		if (!codes) return;
 		const next = new Set(checked);
-		for (const { item } of data.items) if (item.minderCode && codes.includes(item.minderCode)) next.add(item.id);
+		for (const { item } of [...data.items, ...data.moreItems])
+			if (item.minderCode && codes.includes(item.minderCode)) next.add(item.id);
 		checked = next;
 	}
+
+	const moreChecked = $derived(data.moreItems.filter((i) => checked.has(i.item.id)).length);
+	// Open "More items" when something inside is pre-checked; never close it on the user.
+	let moreOpen = $state(untrack(() => moreChecked > 0));
+	$effect(() => {
+		if (moreChecked > 0) moreOpen = true;
+	});
 </script>
+
+{#snippet itemCheck({ item, due }: (typeof data.items)[number])}
+	<li>
+		<label class="flex cursor-pointer items-center gap-3 py-2.5 font-normal">
+			<input type="checkbox" name="items" value={item.id} checked={checked.has(item.id)} onchange={() => toggle(item.id)} />
+			<span class="flex-1 text-base text-slate-900 dark:text-slate-100">
+				{item.name}{#if item.minderCode}<span class="muted ml-1 text-xs">({item.minderCode})</span>{/if}
+			</span>
+			{#if due.status !== 'ok'}<StatusBadge status={due.status} />{/if}
+		</label>
+	</li>
+{/snippet}
 
 <svelte:head><title>Log service · {data.vehicle.nickname} · Auto</title></svelte:head>
 
@@ -71,18 +91,18 @@
 		<h2 class="mb-2 font-semibold">What was done</h2>
 		{#if form?.errors?.items}<p class="field-error mb-2">{form.errors.items}</p>{/if}
 		<ul class="divide-y divide-slate-200 dark:divide-slate-800">
-			{#each data.items as { item, due } (item.id)}
-				<li>
-					<label class="flex cursor-pointer items-center gap-3 py-2.5 font-normal">
-						<input type="checkbox" name="items" value={item.id} checked={checked.has(item.id)} onchange={() => toggle(item.id)} />
-						<span class="flex-1 text-base text-slate-900 dark:text-slate-100">
-							{item.name}{#if item.minderCode}<span class="muted ml-1 text-xs">({item.minderCode})</span>{/if}
-						</span>
-						{#if due.status !== 'ok'}<StatusBadge status={due.status} />{/if}
-					</label>
-				</li>
-			{/each}
+			{#each data.items as row (row.item.id)}{@render itemCheck(row)}{/each}
 		</ul>
+		{#if data.moreItems.length}
+			<details class="mt-2" bind:open={moreOpen}>
+				<summary class="link cursor-pointer text-sm">
+					More items ({data.moreItems.length}){moreChecked ? ` · ${moreChecked} checked` : ''}
+				</summary>
+				<ul class="divide-y divide-slate-200 dark:divide-slate-800">
+					{#each data.moreItems as row (row.item.id)}{@render itemCheck(row)}{/each}
+				</ul>
+			</details>
+		{/if}
 
 		<h3 class="mt-4 mb-2 text-sm font-semibold">Other work (repairs, parts, not on the schedule)</h3>
 		{#each other as line, i (i)}

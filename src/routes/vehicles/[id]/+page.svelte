@@ -43,6 +43,45 @@
 	</a>
 {/if}
 
+{#snippet itemRow({ item, due }: (typeof data.items)[number])}
+	<li class="px-4 py-3">
+		<div class="flex items-start gap-3">
+			<div class="min-w-0 flex-1">
+				<div class="font-medium">
+					{item.name}
+					{#if item.minderCode}<span class="muted ml-1 text-xs font-normal">Minder {item.minderCode}</span>{/if}
+				</div>
+				<div><DueSummary {due} /></div>
+				<div class="muted text-xs">
+					{interval(item.intervalMiles, item.intervalMonths)}
+					{#if due.lastDone}· last {formatDate(due.lastDone.date)}{due.lastDone.mileage !== null ? ` at ${miles(due.lastDone.mileage)}` : ''}{/if}
+					{#if !item.verified}· <span title="Not yet checked against the owner's manual">unverified</span>{/if}
+				</div>
+			</div>
+			<div class="flex flex-col items-end gap-1">
+				<StatusBadge status={due.status} />
+				{#if due.status === 'snoozed'}
+					<form method="POST" action="?/unsnooze">
+						<input type="hidden" name="itemId" value={item.id} />
+						<button class="link text-xs">until {formatDate(item.snoozedUntil)} · undo</button>
+					</form>
+				{:else if due.status === 'unknown'}
+					<a href="/vehicles/{v.id}/catch-up" class="link text-xs">Set last done</a>
+				{:else if due.status !== 'ok'}
+					<div class="flex gap-2 text-xs">
+						<a href="/vehicles/{v.id}/log?items={item.id}" class="link">Log</a>
+						<form method="POST" action="?/snooze">
+							<input type="hidden" name="itemId" value={item.id} />
+							<input type="hidden" name="days" value="14" />
+							<button class="link">Snooze 2 wk</button>
+						</form>
+					</div>
+				{/if}
+			</div>
+		</div>
+	</li>
+{/snippet}
+
 <nav class="mb-4 flex gap-1 border-b border-slate-200 dark:border-slate-800">
 	{#each tabs as [key, label] (key)}
 		<a
@@ -57,45 +96,18 @@
 
 {#if tab === 'schedule'}
 	<ul class="card divide-y divide-slate-200 p-0 dark:divide-slate-800">
-		{#each data.items as { item, due } (item.id)}
-			<li class="px-4 py-3">
-				<div class="flex items-start gap-3">
-					<div class="min-w-0 flex-1">
-						<div class="font-medium">
-							{item.name}
-							{#if item.minderCode}<span class="muted ml-1 text-xs font-normal">Minder {item.minderCode}</span>{/if}
-						</div>
-						<div><DueSummary {due} /></div>
-						<div class="muted text-xs">
-							{interval(item.intervalMiles, item.intervalMonths)}
-							{#if due.lastDone}· last {formatDate(due.lastDone.date)}{due.lastDone.mileage !== null ? ` at ${miles(due.lastDone.mileage)}` : ''}{/if}
-							{#if !item.verified}· <span title="Not yet checked against the owner's manual">unverified</span>{/if}
-						</div>
-					</div>
-					<div class="flex flex-col items-end gap-1">
-						<StatusBadge status={due.status} />
-						{#if due.status === 'snoozed'}
-							<form method="POST" action="?/unsnooze">
-								<input type="hidden" name="itemId" value={item.id} />
-								<button class="link text-xs">until {formatDate(item.snoozedUntil)} · undo</button>
-							</form>
-						{:else if due.status === 'unknown'}
-							<a href="/vehicles/{v.id}/catch-up" class="link text-xs">Set last done</a>
-						{:else if due.status !== 'ok'}
-							<div class="flex gap-2 text-xs">
-								<a href="/vehicles/{v.id}/log?items={item.id}" class="link">Log</a>
-								<form method="POST" action="?/snooze">
-									<input type="hidden" name="itemId" value={item.id} />
-									<input type="hidden" name="days" value="14" />
-									<button class="link">Snooze 2 wk</button>
-								</form>
-							</div>
-						{/if}
-					</div>
-				</div>
-			</li>
-		{/each}
+		{#each data.items as row (row.item.id)}{@render itemRow(row)}{/each}
 	</ul>
+	{#if data.moreItems.length}
+		<details class="card mt-3 p-0">
+			<summary class="cursor-pointer px-4 py-3 text-sm font-medium">
+				More items ({data.moreItems.length}) <span class="muted font-normal">· shown above once they come due</span>
+			</summary>
+			<ul class="divide-y divide-slate-200 border-t border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+				{#each data.moreItems as row (row.item.id)}{@render itemRow(row)}{/each}
+			</ul>
+		</details>
+	{/if}
 	<div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
 		<a href="/vehicles/{v.id}/schedule" class="link">Edit schedule</a>
 		<a href="/vehicles/{v.id}/catch-up" class="link">Catch up (set last-done)</a>

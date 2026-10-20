@@ -13,6 +13,10 @@ Design and reasoning: [docs/DESIGN.md](docs/DESIGN.md).
   **2011 Toyota Tacoma V6**. Items that don't match the drivetrain are skipped: AWD-only
   items for a 2WD vehicle, 4x4-only items for a 4x2. Every interval can be edited and marked
   verified once checked against the owner's manual.
+- **The usuals first.** Oil, tire rotation, air filters, wipers, battery and brake/multi-point
+  inspection are always shown. Less common items (belts, fluids, plugs, coolant, differentials…)
+  sit under **More items** and only show up, and send reminders, once they're actually coming
+  due. Each item has a **Usual** toggle in Edit schedule.
 - **Catch-up checklist** for entering when each item was last done (or "never", or "don't know").
 - **Due status** for each item: whichever comes first of miles or months. Today's mileage
   is estimated from recent odometer readings.

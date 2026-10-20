@@ -6,7 +6,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { and, eq, notInArray } from 'drizzle-orm';
 import { building } from '$app/environment';
 import * as schema from './schema';
-import { templates } from './templates';
+import { extraItemNames, templates } from './templates';
 
 export const dataDir = path.resolve(process.env.DATA_DIR ?? 'data');
 
@@ -69,6 +69,7 @@ export function seedTemplates(database: DB = db) {
 					minderCode: item.minder ?? null,
 					drivetrains: item.drivetrains ?? null,
 					enabledByDefault: !item.disabled,
+					core: !extraItemNames.has(item.name),
 					notes: item.notes ?? null
 				};
 				const match = existing.find((e) => e.name === item.name);

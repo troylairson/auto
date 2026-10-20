@@ -282,3 +282,16 @@ export function compareDue(a: DueResult, b: DueResult): number {
 	const bd = b.effectiveDueDate ?? '9999-12-31';
 	return ad < bd ? -1 : ad > bd ? 1 : 0;
 }
+
+/**
+ * Should an item appear in the main lists, dashboard and reminders? "Usual" items
+ * always do. Other items stay folded away until real information (a logged service,
+ * a last-done date or a Minder code) says they're coming due; they never nag as Unknown.
+ */
+export function isSurfaced(core: boolean, due: DueResult): boolean {
+	if (core) return true;
+	return (
+		due.source !== 'none' &&
+		(due.underlying === 'overdue' || due.underlying === 'due' || due.underlying === 'soon')
+	);
+}

@@ -12,7 +12,8 @@
 <a href="/vehicles/{data.vehicle.id}" class="link text-sm">← {data.vehicle.nickname}</a>
 <h1 class="mt-1 text-2xl font-bold">Edit schedule</h1>
 <p class="muted mb-4 text-sm">
-	Check each item against the owner's manual and tick <strong>Verified</strong>. "First due" overrides the interval
+	Check each item against the owner's manual and tick <strong>Verified</strong>. <strong>Usual</strong> items are
+	always shown; the rest stay under "More items" until they come due. "First due" overrides the interval
 	for the first service only (e.g. coolant first at 100k, then every 50k).
 	{#if data.vehicle.maintenanceMinder}The Minder code links an item to the code shown on the dash (A, B, 1–7).{/if}
 </p>
@@ -65,7 +66,7 @@
 				<div>
 					<div class="font-medium">{item.name}{item.minderCode ? ` (${item.minderCode})` : ''}</div>
 					<div class="muted text-sm">
-						{interval(item.intervalMiles, item.intervalMonths)}{item.enabled ? '' : ' · disabled'}{item.verified ? ' · ✓ verified' : ''}
+						{interval(item.intervalMiles, item.intervalMonths)}{item.enabled ? '' : ' · disabled'}{item.core ? '' : ' · more'}{item.verified ? ' · ✓ verified' : ''}
 					</div>
 				</div>
 				<span class="muted text-sm">{open === item.id ? 'Close' : 'Edit'}</span>
@@ -80,6 +81,7 @@
 					<div class="flex flex-wrap items-center gap-4">
 						<span class="flex items-center gap-2"><input type="checkbox" id="enabled-{item.id}" name="enabled" checked={item.enabled} /><label for="enabled-{item.id}">Enabled</label></span>
 						<span class="flex items-center gap-2"><input type="checkbox" id="verified-{item.id}" name="verified" checked={item.verified} /><label for="verified-{item.id}">Verified</label></span>
+						<span class="flex items-center gap-2"><input type="checkbox" id="core-{item.id}" name="core" checked={item.core} /><label for="core-{item.id}">Usual (always shown)</label></span>
 					</div>
 					<div class="flex flex-wrap gap-2">
 						<button class="btn-primary">Save</button>
