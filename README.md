@@ -28,32 +28,98 @@ Design and reasoning: [docs/DESIGN.md](docs/DESIGN.md).
 - **Calendar feed** (`.ics`) of due dates for Google or Apple Calendar.
 - **Nightly database backups**, keeping the last 30.
 
-## Install on ZimaOS
+## Install on ZimaOS (over SSH)
 
-1. **Image.** Merging to `main` makes GitHub Actions build and publish
-   `ghcr.io/troylairson/auto:latest`. In GitHub, go to the repo → Packages → `auto` →
-   Package settings and either make the package **public** (it contains only code, no
-   data), or run `docker login ghcr.io` once on the Zima box over SSH.
-2. **Remote access.** Install **Tailscale** from the ZimaOS App Store and on both phones.
-   On the Zima box, run `tailscale serve --bg 3000` to get an HTTPS URL like
-   `https://zima.your-tailnet.ts.net`.
-3. **Install the app.** In ZimaOS, go to App Store → Custom Install → Import and paste
-   [`docker-compose.yml`](docker-compose.yml). Set `ORIGIN` to the Tailscale URL from step 2.
-   Data is stored in `/DATA/AppData/auto`.
-4. **First run.** Open the URL and create Troy's login, then add Lexi under
-   **Settings → Household**.
-5. **Notifications.** Each person installs the **ntfy** app, subscribes to the topic
-   shown in their Settings, and taps **Send test notification**.
-6. **Vehicles.** Add the Pilot (AWD, 9-speed) and the Tacoma (4x4) with their current
-   odometer readings, then fill in the catch-up checklist.
+Merging to `main` makes GitHub Actions build and publish `ghcr.io/troylairson/auto:latest`.
+On the Zima box everything runs from one Compose file in `/DATA/AppData/auto`.
+ZimaOS doesn't allow installing system packages, so Tailscale runs as a container next to the app.
 
-**Use one URL.** Always open the app through the address in `ORIGIN`. SvelteKit rejects
-form submissions from any other origin, as protection against cross-site request forgery,
-so the LAN IP address will load pages but saving will fail. If you'd rather use a LAN
-address, set `ORIGIN` to that address instead.
+**1. Connect.** Turn on SSH in the ZimaOS settings, then run `ssh <user>@<zima-ip>`. Prefix the
+`docker` commands with `sudo` if your user isn't in the docker group.
 
-**Updating:** pull the new image and recreate the container from the ZimaOS app
-settings, or run `docker compose pull && docker compose up -d`.
+**2. Create the Compose file.**
+
+```sh
+mkdir -p /DATA/AppData/auto && cd /DATA/AppData/auto
+cat > docker-compose.yml <<'YAML'
+name: auto
+services:
+  tailscale:
+    image: tailscale/tailscale:stable
+    container_name: tailscale
+    hostname: zima
+    network_mode: host
+    cap_add: [NET_ADMIN, NET_RAW]
+    devices: ["/dev/net/tun:/dev/net/tun"]
+    volumes: ["/DATA/AppData/tailscale:/var/lib/tailscale"]
+    environment:
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "false"
+    restart: unless-stopped
+
+  auto:
+    image: ghcr.io/troylairson/auto:latest
+    container_name: auto
+    restart: unless-stopped
+    ports: ["3000:3000"]
+    volumes: ["/DATA/AppData/auto/data:/app/data"]
+    environment:
+      TZ: America/New_York
+      ORIGIN: https://zima.CHANGE-ME.ts.net
+      NTFY_URL: https://ntfy.sh
+YAML
+```
+
+**3. Start Tailscale and get the HTTPS address.** In the Tailscale admin console, on the DNS
+page, turn on MagicDNS and HTTPS certificates first.
+
+```sh
+docker compose up -d tailscale
+docker exec tailscale tailscale up             # open the printed link and approve the device
+docker exec tailscale tailscale serve --bg 3000
+docker exec tailscale tailscale serve status   # shows https://zima.<tailnet>.ts.net
+```
+
+If Tailscale is already installed from the ZimaOS App Store, delete the `tailscale` service
+from the file and run `tailscale serve --bg 3000` with that install.
+
+**4. Set `ORIGIN` and start the app.**
+
+```sh
+sed -i 's#https://zima.CHANGE-ME.ts.net#https://zima.<tailnet>.ts.net#' docker-compose.yml
+# Only if the ghcr.io package is private (token needs read:packages):
+# echo <token> | docker login ghcr.io -u troylairson --password-stdin
+docker compose up -d auto
+docker logs auto     # ends with "Listening on http://0.0.0.0:3000"
+```
+
+**5. First run.**
+1. Open `https://zima.<tailnet>.ts.net` (install Tailscale on the phones too) and create Troy's login.
+2. Add Lexi under **Settings → Household**.
+3. Each person installs the **ntfy** app, subscribes to the topic shown in their Settings, and taps
+   **Send test notification**.
+4. Add the Pilot (AWD, 9-speed) and the Tacoma (4x4) with their current odometer readings, then
+   fill in the catch-up checklist.
+
+**Use one URL.** Always open the app through the `ORIGIN` address. SvelteKit rejects form
+submissions from any other origin, as protection against cross-site request forgery, so the
+LAN IP address will load pages but saving will fail. If you'd rather use a LAN address, set
+`ORIGIN` to that address instead.
+
+### Day to day
+
+```sh
+cd /DATA/AppData/auto
+docker compose pull auto && docker compose up -d auto   # update to the latest image
+docker logs -f auto                                     # logs
+docker compose restart auto                             # restart
+```
+
+Containers started over SSH may appear in the ZimaOS dashboard, but ZimaOS doesn't manage
+them, so run updates and changes from SSH.
+
+*Prefer the dashboard?* Use App Store → Custom Install → Import and paste the repo's
+[`docker-compose.yml`](docker-compose.yml) (app only). Set `ORIGIN`, and install Tailscale from the App Store.
 
 ### Configuration
 
@@ -63,15 +129,22 @@ settings, or run `docker compose pull && docker compose up -d`.
 | `TZ` | `America/New_York` | Time zone for "today", 07:00 reminders and 03:30 backups |
 | `NTFY_URL` | `https://ntfy.sh` | ntfy server |
 | `NTFY_TOKEN` | (none) | Access token if your ntfy server requires one |
-| `DATA_DIR` | `/app/data` | Database, backups |
+| `DATA_DIR` | `/app/data` | Database and backups (mounted from `/DATA/AppData/auto/data`) |
 | `PORT` | `3000` | HTTP port |
 
 ### Backups and restore
 
-Backups are written to `/DATA/AppData/auto/backups/auto-YYYY-MM-DD.db`. To keep a copy off
-the box, point ZimaOS backup or sync at `/DATA/AppData/auto`. To restore, stop the
-container, copy a backup over `auto.db`, delete `auto.db-wal` and `auto.db-shm`, and start
-the container again.
+Backups are written to `/DATA/AppData/auto/data/backups/auto-YYYY-MM-DD.db`, and the last 30
+are kept. To keep a copy off the box, point ZimaOS backup or sync at `/DATA/AppData/auto`.
+
+To restore:
+
+```sh
+cd /DATA/AppData/auto
+docker compose stop auto
+cp data/backups/auto-YYYY-MM-DD.db data/auto.db && rm -f data/auto.db-wal data/auto.db-shm
+docker compose start auto
+```
 
 ## Development
 
