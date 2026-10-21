@@ -19,6 +19,7 @@ export const load: PageServerLoad = ({ params, url }) => {
 		today,
 		estimate: overview.estimate,
 		items: overview.items,
+		moreItems: overview.moreItems,
 		vendors: pastVendors(),
 		preselected,
 		existing

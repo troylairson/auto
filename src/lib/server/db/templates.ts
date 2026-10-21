@@ -25,6 +25,34 @@ export type SeedTemplate = {
 	items: SeedItem[];
 };
 
+/**
+ * Items that aren't "the usuals". They're folded away under "More items" and only
+ * surface once they're actually coming due (see isSurfaced in $lib/due).
+ */
+export const extraItemNames = new Set([
+	'Tire pressure & tread check',
+	'Brake fluid',
+	'Engine coolant',
+	'Engine coolant (Toyota SLLC)',
+	'Battery coolant',
+	'Spark plugs',
+	'Spark plugs, timing belt & water pump inspection, valve clearance',
+	'Timing belt',
+	'Drive belt inspection',
+	'Transmission fluid',
+	'Transmission fluid (9-speed)',
+	'Rear differential fluid',
+	'Rear differential oil',
+	'Front differential oil',
+	'Transfer case oil',
+	'Propeller shaft grease',
+	'Fuel filter',
+	'DEF top-up',
+	'Hybrid battery cooling filter',
+	'Frame & underbody corrosion inspection',
+	'Battery, hoses & shocks inspection'
+]);
+
 const common = {
 	tireCheck: { name: 'Tire pressure & tread check', category: 'Tires', months: 1 },
 	wipers: { name: 'Wiper blades', category: 'Body', months: 12 },

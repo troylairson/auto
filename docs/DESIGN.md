@@ -270,6 +270,19 @@ are turned into concrete replace intervals.
 Set `usage_profile = severe` for the Tacoma if it tows, goes off-road, or mostly does
 short trips. That switches oil to 5,000 mi / 6 mo with shorter diff and ATF intervals.
 
+### 5.5a Usual items vs. more items
+
+Showing every item made the app feel too granular. Each item has a `core` ("usual") flag:
+- **Usuals** (oil, tire rotation, air filters, wipers, battery test, brake/multi-point
+  inspection) always show.
+- **Everything else** is folded under "More items" on the vehicle page, log form and
+  catch-up page. It appears on Home, in Up next, in reminders and in the calendar only once
+  real information (a logged service, a last-done date or a Minder code) says it's due soon or
+  later. It never shows as Unknown.
+
+The rule is `isSurfaced()` in `src/lib/due.ts`. Defaults come from `extraItemNames` in the
+seed templates, and each item can be changed in Edit schedule.
+
 ### 5.6 Maintenance Minder support (Pilot)
 
 Mirror what the car says. Don't try to out-guess its algorithm.
