@@ -1,13 +1,137 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/* Theme: light by default; dark follows the system unless the user picked one
+   (html[data-theme="light" | "dark" | "auto"], set from a cookie on the server). */
+:root {
+	color-scheme: light;
+	--bg: #f3f4f6;
+	--panel: #ffffff;
+	--line: #e5e7eb;
+	--text: #111827;
+	--muted: #4b5563;
+	--track: #e5e7eb;
+	--seg: #e5e7eb;
+	--dash: #9ca3af;
+	--nav: #ffffff;
+	--input: #ffffff;
+	--link: #b45309;
+	--warn: #d97706;
+	--warn-text: #b45309;
+	--warn-line: #fcd9a8;
+	--warn-soft: #ffedd5;
+	--warn-on-soft: #9a3412;
+	--on-warn: #ffffff;
+	--danger: #dc2626;
+	--danger-text: #b91c1c;
+	--danger-soft: #fee2e2;
+	--soon: #ca8a04;
+	--soon-text: #854d0e;
+	--soon-soft: #fef9c3;
+	--ok: #0d9488;
+	--ok-text: #0f766e;
+	--ok-soft: #ccfbf1;
+	--glow: none;
+	--fab-shadow: 0 6px 16px rgb(217 119 6 / 0.35);
+}
 
-@theme {
-	--color-overdue: #dc2626;
-	--color-due: #ea580c;
-	--color-soon: #ca8a04;
-	--color-ok: #16a34a;
-	--color-unknown: #6b7280;
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		color-scheme: dark;
+		--bg: #0b0d10;
+		--panel: #14181d;
+		--line: #232a31;
+		--text: #e8eaed;
+		--muted: #9aa4ae;
+		--track: #232a31;
+		--seg: #1b2026;
+		--dash: #3a434d;
+		--nav: #0f1215;
+		--input: #0f1215;
+		--link: #fbbf24;
+		--warn: #f59e0b;
+		--warn-text: #fbbf24;
+		--warn-line: #5c3d0a;
+		--warn-soft: #f59e0b;
+		--warn-on-soft: #0b0d10;
+		--on-warn: #0b0d10;
+		--danger: #f87171;
+		--danger-text: #fca5a5;
+		--danger-soft: rgb(248 113 113 / 0.16);
+		--soon: #eab308;
+		--soon-text: #fde047;
+		--soon-soft: rgb(234 179 8 / 0.14);
+		--ok: #2dd4bf;
+		--ok-text: #5eead4;
+		--ok-soft: rgb(45 212 191 / 0.12);
+		--glow: 0 0 10px #f59e0b;
+		--fab-shadow: 0 0 22px rgb(245 158 11 / 0.45);
+	}
+}
+
+:root[data-theme='dark'] {
+	color-scheme: dark;
+	--bg: #0b0d10;
+	--panel: #14181d;
+	--line: #232a31;
+	--text: #e8eaed;
+	--muted: #9aa4ae;
+	--track: #232a31;
+	--seg: #1b2026;
+	--dash: #3a434d;
+	--nav: #0f1215;
+	--input: #0f1215;
+	--link: #fbbf24;
+	--warn: #f59e0b;
+	--warn-text: #fbbf24;
+	--warn-line: #5c3d0a;
+	--warn-soft: #f59e0b;
+	--warn-on-soft: #0b0d10;
+	--on-warn: #0b0d10;
+	--danger: #f87171;
+	--danger-text: #fca5a5;
+	--danger-soft: rgb(248 113 113 / 0.16);
+	--soon: #eab308;
+	--soon-text: #fde047;
+	--soon-soft: rgb(234 179 8 / 0.14);
+	--ok: #2dd4bf;
+	--ok-text: #5eead4;
+	--ok-soft: rgb(45 212 191 / 0.12);
+	--glow: 0 0 10px #f59e0b;
+	--fab-shadow: 0 0 22px rgb(245 158 11 / 0.45);
+}
+
+@theme inline {
+	--font-sans: 'Inter Variable', Inter, system-ui, sans-serif;
+	--font-num: 'Barlow Condensed', 'Inter Variable', sans-serif;
+	--color-bg: var(--bg);
+	--color-panel: var(--panel);
+	--color-line: var(--line);
+	--color-text: var(--text);
+	--color-muted: var(--muted);
+	--color-track: var(--track);
+	--color-seg: var(--seg);
+	--color-dash: var(--dash);
+	--color-nav: var(--nav);
+	--color-input: var(--input);
+	--color-link: var(--link);
+	--color-warn: var(--warn);
+	--color-warn-text: var(--warn-text);
+	--color-warn-line: var(--warn-line);
+	--color-warn-soft: var(--warn-soft);
+	--color-warn-on-soft: var(--warn-on-soft);
+	--color-on-warn: var(--on-warn);
+	--color-danger: var(--danger);
+	--color-danger-text: var(--danger-text);
+	--color-danger-soft: var(--danger-soft);
+	--color-soon: var(--soon);
+	--color-soon-text: var(--soon-text);
+	--color-soon-soft: var(--soon-soft);
+	--color-ok: var(--ok);
+	--color-ok-text: var(--ok-text);
+	--color-ok-soft: var(--ok-soft);
 }
 
 @layer base {
@@ -15,50 +139,57 @@
 		-webkit-text-size-adjust: 100%;
 	}
 	body {
-		@apply bg-slate-100 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+		@apply bg-bg font-sans text-text antialiased;
 	}
-	input,
+	input:not([type='checkbox']):not([type='radio']),
 	select,
 	textarea {
-		@apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100;
+		@apply w-full rounded-xl border border-line bg-input px-3 py-2.5 text-base text-text placeholder:text-muted/70 focus:border-warn focus:outline-none;
 	}
 	input[type='checkbox'],
 	input[type='radio'] {
-		@apply size-5 w-5 shrink-0 accent-sky-600;
+		@apply size-5 shrink-0 accent-[var(--warn)];
 	}
 	label {
-		@apply block text-sm font-medium text-slate-700 dark:text-slate-300;
+		@apply block text-sm font-medium text-muted;
+	}
+	summary {
+		@apply cursor-pointer;
 	}
 }
 
 @utility card {
-	@apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900;
+	@apply rounded-[20px] border border-line bg-panel p-4;
 }
 
 @utility btn {
-	@apply inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors disabled:opacity-50;
+	@apply inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold whitespace-nowrap transition-colors disabled:opacity-50;
 }
 
 @utility btn-primary {
-	@apply btn bg-sky-600 text-white hover:bg-sky-700;
+	@apply btn bg-warn text-on-warn hover:brightness-110;
 }
 
 @utility btn-secondary {
-	@apply btn border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700;
+	@apply btn border border-line bg-panel text-text hover:bg-seg;
 }
 
 @utility btn-danger {
-	@apply btn border border-red-300 bg-white text-red-700 hover:bg-red-50 dark:border-red-800 dark:bg-slate-900 dark:text-red-400;
-}
-
-@utility muted {
-	@apply text-slate-500 dark:text-slate-400;
+	@apply btn border border-danger/50 bg-panel text-danger-text hover:bg-danger-soft;
 }
 
 @utility field-error {
-	@apply mt-1 text-sm text-red-600 dark:text-red-400;
+	@apply mt-1 text-sm text-danger-text;
 }
 
 @utility link {
-	@apply text-sky-700 underline-offset-2 hover:underline dark:text-sky-400;
+	@apply font-semibold text-link underline-offset-2 hover:underline;
+}
+
+@utility num {
+	@apply font-num tabular-nums;
+}
+
+@utility section-title {
+	@apply text-[17px] font-bold;
 }

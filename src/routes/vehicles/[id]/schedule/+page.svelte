@@ -10,8 +10,8 @@
 <svelte:head><title>Schedule · {data.vehicle.nickname} · Auto</title></svelte:head>
 
 <a href="/vehicles/{data.vehicle.id}" class="link text-sm">← {data.vehicle.nickname}</a>
-<h1 class="mt-1 text-2xl font-bold">Edit schedule</h1>
-<p class="muted mb-4 text-sm">
+<h1 class="mt-1 text-[26px] font-bold tracking-tight">Edit schedule</h1>
+<p class="text-muted mb-4 text-sm">
 	Check each item against the owner's manual and tick <strong>Verified</strong>. <strong>Usual</strong> items are
 	always shown; the rest stay under "More items" until they come due. "First due" overrides the interval
 	for the first service only (e.g. coolant first at 100k, then every 50k).
@@ -65,14 +65,14 @@
 			<button type="button" class="flex w-full items-center justify-between gap-3 text-left" onclick={() => (open = open === item.id ? null : item.id)}>
 				<div>
 					<div class="font-medium">{item.name}{item.minderCode ? ` (${item.minderCode})` : ''}</div>
-					<div class="muted text-sm">
+					<div class="text-muted text-sm">
 						{interval(item.intervalMiles, item.intervalMonths)}{item.enabled ? '' : ' · disabled'}{item.core ? '' : ' · more'}{item.verified ? ' · ✓ verified' : ''}
 					</div>
 				</div>
-				<span class="muted text-sm">{open === item.id ? 'Close' : 'Edit'}</span>
+				<span class="text-muted text-sm">{open === item.id ? 'Close' : 'Edit'}</span>
 			</button>
 			{#if form && 'savedId' in form && form.savedId === item.id && open !== item.id}
-				<p class="mt-1 text-sm text-green-700 dark:text-green-400">Saved.</p>
+				<p class="mt-1 text-sm text-ok-text">Saved.</p>
 			{/if}
 			{#if open === item.id || errorsFor(item.id)}
 				<form method="POST" action="?/save" class="mt-4 space-y-3" use:enhance={() => async ({ update, result }) => { await update({ reset: false }); if (result.type === 'success') open = null; }}>

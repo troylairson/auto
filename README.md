@@ -8,6 +8,12 @@ Design and reasoning: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## What it does
 
+The app has five tabs: **Garage** (a card per vehicle with a gauge for oil life or miles to the
+next oil change), **Timeline** (everything coming up across vehicles: Now / Next 30 days /
+Later), **+** (log service), **History** (every service logged, with spending this year) and
+**Settings**. It follows the phone's light/dark setting, and you can override that under
+Settings → Appearance.
+
 - **Vehicles** come with a schedule copied from a template. Generic gas/diesel/hybrid/EV
   templates are included, plus ones for the **2021 Honda Pilot** (Maintenance Minder) and the
   **2011 Toyota Tacoma V6**. Items that don't match the drivetrain are skipped: AWD-only

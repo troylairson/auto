@@ -29,6 +29,10 @@ export type VehicleOverview = {
 	items: ItemWithDue[]; // usual items plus others coming due, sorted worst/soonest first
 	moreItems: ItemWithDue[]; // enabled non-usual items that aren't coming due yet
 	disabledItems: MaintenanceItem[];
+	/** Maintenance Minder code currently driving due items (e.g. "B13"), if any. */
+	minderCode: string | null;
+	/** The item the vehicle's main gauge shows: oil, else the most urgent known item. */
+	hero: ItemWithDue | null;
 };
 
 export function vehicleStartDate(v: Vehicle) {
@@ -102,12 +106,22 @@ export function getOverview(vehicle: Vehicle, today: string): VehicleOverview {
 		.filter((i) => i.enabled)
 		.map((item) => ({ item, due: computeDue(item, lastDone.get(item.id) ?? null, ctx) }))
 		.sort((a, b) => compareDue(a.due, b.due));
+	const items = enabled.filter((i) => isSurfaced(i.item.core, i.due));
+	const codeItem = items.find((i) => i.due.source === 'minder_code');
+	const codeReading = codeItem
+		? readings.filter((r) => r.minderCode).sort((a, b) => (a.date < b.date ? 1 : -1))[0]
+		: null;
+	const oil =
+		items.find((i) => i.due.oilLifePct !== null) ??
+		items.find((i) => i.item.core && /oil/i.test(i.item.name) && i.due.status !== 'unknown');
 	return {
 		vehicle,
 		estimate,
-		items: enabled.filter((i) => isSurfaced(i.item.core, i.due)),
+		items,
 		moreItems: enabled.filter((i) => !isSurfaced(i.item.core, i.due)),
-		disabledItems: all.filter((i) => !i.enabled)
+		disabledItems: all.filter((i) => !i.enabled),
+		minderCode: codeReading?.minderCode?.toUpperCase() ?? null,
+		hero: oil ?? items.find((i) => i.due.progress !== null) ?? null
 	};
 }
 

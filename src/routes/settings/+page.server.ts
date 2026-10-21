@@ -10,18 +10,34 @@ import { backupDatabase } from '$lib/server/backup';
 import { createUser, readUserForm } from '$lib/server/users';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ locals, url }) => {
+export const load: PageServerLoad = ({ locals, url, cookies }) => {
 	const me = locals.user!;
 	return {
 		me: { name: me.name, username: me.username, ntfyTopic: me.ntfyTopic, notifyPush: me.notifyPush },
 		household: db.select({ id: users.id, name: users.name, username: users.username }).from(users).all(),
 		ntfyServer: process.env.NTFY_URL ?? 'https://ntfy.sh',
 		calendarUrl: appUrl(`/calendar/${me.calendarToken}.ics`) ?? `${url.origin}/calendar/${me.calendarToken}.ics`,
-		originConfigured: !!(process.env.ORIGIN ?? process.env.PUBLIC_URL)
+		originConfigured: !!(process.env.ORIGIN ?? process.env.PUBLIC_URL),
+		theme: cookies.get('theme') ?? 'auto'
 	};
 };
 
 export const actions: Actions = {
+	theme: async ({ request, cookies, url }) => {
+		const theme = String((await request.formData()).get('theme'));
+		if (theme === 'light' || theme === 'dark') {
+			cookies.set('theme', theme, {
+				path: '/',
+				httpOnly: false,
+				sameSite: 'lax',
+				secure: url.protocol === 'https:',
+				maxAge: 60 * 60 * 24 * 365 * 5
+			});
+		} else {
+			cookies.delete('theme', { path: '/' });
+		}
+		return { section: 'theme' };
+	},
 	profile: async ({ request, locals }) => {
 		const f = new FormReader(await request.formData());
 		const name = f.str('name', { required: true, label: 'Name' });
