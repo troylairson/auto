@@ -274,3 +274,24 @@ describe('isSurfaced', () => {
 		expect(isSurfaced(false, r)).toBe(true);
 	});
 });
+
+describe('progress', () => {
+	it('uses whichever of miles or time is further along', () => {
+		// 2,000 of 5,000 mi (0.4) vs 50 of 181 days (~0.28)
+		const r = computeDue(item(), { date: '2026-09-01', mileage: 50000 }, ctx(52000));
+		expect(r.progress).toBeCloseTo(0.4, 5);
+	});
+	it('is 1 when overdue and null when unknown', () => {
+		expect(computeDue(item(), { date: '2026-01-01', mileage: 0 }, ctx(1000)).progress).toBe(1);
+		expect(computeDue(item(), null, ctx(1000)).progress).toBeNull();
+	});
+	it('follows oil life for Minder vehicles', () => {
+		const oil = item({ intervalMiles: 7500, intervalMonths: 12, minderCode: 'A' });
+		const r = computeDue(
+			oil,
+			{ date: '2026-10-10', mileage: 30000 },
+			ctx(30500, 30, { minderReadings: [{ date: '2026-10-20', mileage: 30500, oilLifePct: 80 }] })
+		);
+		expect(r.progress).toBeCloseTo(0.2, 5);
+	});
+});

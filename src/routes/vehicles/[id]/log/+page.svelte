@@ -1,7 +1,6 @@
 <script lang="ts">
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { parseMinderCode } from '$lib/due';
-	import { money } from '$lib/format';
 	import { untrack } from 'svelte';
 
 	let { data, form } = $props();
@@ -48,8 +47,8 @@
 	<li>
 		<label class="flex cursor-pointer items-center gap-3 py-2.5 font-normal">
 			<input type="checkbox" name="items" value={item.id} checked={checked.has(item.id)} onchange={() => toggle(item.id)} />
-			<span class="flex-1 text-base text-slate-900 dark:text-slate-100">
-				{item.name}{#if item.minderCode}<span class="muted ml-1 text-xs">({item.minderCode})</span>{/if}
+			<span class="flex-1 text-base text-text">
+				{item.name}{#if item.minderCode}<span class="text-muted ml-1 text-xs">({item.minderCode})</span>{/if}
 			</span>
 			{#if due.status !== 'ok'}<StatusBadge status={due.status} />{/if}
 		</label>
@@ -59,7 +58,7 @@
 <svelte:head><title>Log service · {data.vehicle.nickname} · Auto</title></svelte:head>
 
 <a href="/vehicles/{data.vehicle.id}" class="link text-sm">← {data.vehicle.nickname}</a>
-<h1 class="mt-1 mb-4 text-2xl font-bold">{ex ? 'Edit service' : 'Log service'}</h1>
+<h1 class="mt-1 mb-4 text-[26px] font-bold tracking-tight">{ex ? 'Edit service' : 'Log service'}</h1>
 
 <form method="POST" class="space-y-4">
 	{#if ex}<input type="hidden" name="recordId" value={ex.record.id} />{/if}
@@ -90,7 +89,7 @@
 	<div class="card">
 		<h2 class="mb-2 font-semibold">What was done</h2>
 		{#if form?.errors?.items}<p class="field-error mb-2">{form.errors.items}</p>{/if}
-		<ul class="divide-y divide-slate-200 dark:divide-slate-800">
+		<ul class="divide-y divide-line">
 			{#each data.items as row (row.item.id)}{@render itemCheck(row)}{/each}
 		</ul>
 		{#if data.moreItems.length}
@@ -98,7 +97,7 @@
 				<summary class="link cursor-pointer text-sm">
 					More items ({data.moreItems.length}){moreChecked ? ` · ${moreChecked} checked` : ''}
 				</summary>
-				<ul class="divide-y divide-slate-200 dark:divide-slate-800">
+				<ul class="divide-y divide-line">
 					{#each data.moreItems as row (row.item.id)}{@render itemCheck(row)}{/each}
 				</ul>
 			</details>
@@ -128,6 +127,7 @@
 		</div>
 	</div>
 
-	<button class="btn-primary w-full sm:w-auto">{ex ? 'Save changes' : 'Save service'}</button>
-	{#if ex && ex.record.totalCostCents}<span class="muted ml-2 text-sm">was {money(ex.record.totalCostCents)}</span>{/if}
+<div class="sticky bottom-[calc(88px+env(safe-area-inset-bottom))] z-10 -mx-4 bg-bg/90 px-4 py-3 backdrop-blur">
+		<button class="btn-primary min-h-12 w-full text-base">{ex ? 'Save changes' : 'Save service'}</button>
+	</div>
 </form>

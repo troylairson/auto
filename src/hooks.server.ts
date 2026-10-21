@@ -33,5 +33,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		const next = path === '/' ? '' : `?next=${encodeURIComponent(path + event.url.search)}`;
 		redirect(303, `/login${next}`);
 	}
-	return resolve(event);
+	const theme = event.cookies.get('theme');
+	const safeTheme = theme === 'light' || theme === 'dark' ? theme : 'auto';
+	return resolve(event, {
+		transformPageChunk: ({ html }) => html.replace('%auto.theme%', safeTheme)
+	});
 };

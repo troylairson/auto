@@ -6,7 +6,7 @@
 	const est = $derived(due.source === 'estimate');
 </script>
 
-<span class="muted text-sm">
+<span class="text-muted text-sm">
 	{#if due.status === 'unknown'}
 		{due.note}
 	{:else}

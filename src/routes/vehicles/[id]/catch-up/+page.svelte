@@ -19,7 +19,7 @@
 		<legend class="sr-only">{item.name}</legend>
 		<div class="mb-2 flex items-center justify-between gap-2">
 			<span class="font-medium">{item.name}</span>
-			{#if item.hasRecord}<span class="muted text-xs">has service records</span>{/if}
+			{#if item.hasRecord}<span class="text-muted text-xs">has service records</span>{/if}
 		</div>
 		<div class="flex flex-wrap gap-4 text-sm">
 			{#each [['done', 'Last done'], ['never', 'Never'], ['unknown', "Don't know"]] as [value, label] (value)}
@@ -55,15 +55,15 @@
 <svelte:head><title>Catch up · {data.vehicle.nickname} · Auto</title></svelte:head>
 
 <a href="/vehicles/{data.vehicle.id}" class="link text-sm">← {data.vehicle.nickname}</a>
-<h1 class="mt-1 text-2xl font-bold">When was each item last done?</h1>
-<p class="muted mb-4">
+<h1 class="mt-1 text-[26px] font-bold tracking-tight">When was each item last done?</h1>
+<p class="text-muted mb-4">
 	{#if page.url.searchParams.has('new')}Vehicle added. {/if}Fill in what you know from receipts or memory; rough dates are fine.
 	<strong>Never</strong> means not since the vehicle was new. Leave anything unsure as <strong>Don't know</strong>: it will
 	show up as "do now" so you can set a fresh starting point. Items with logged service use that instead.
 </p>
 
 {#if form?.errors}
-	<div class="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
+	<div class="mb-4 rounded-lg bg-danger-soft p-3 text-sm text-danger-text">
 		{#each Object.values(form.errors) as e, i (i)}<div>{e}</div>{/each}
 	</div>
 {/if}
@@ -72,8 +72,8 @@
 	{#each usual as item (item.id)}{@render itemFields(item)}{/each}
 	{#if more.length}
 		<details class="card">
-			<summary class="cursor-pointer font-medium">More items ({more.length}) <span class="muted font-normal">· optional</span></summary>
-			<p class="muted mt-2 mb-3 text-sm">
+			<summary class="cursor-pointer font-medium">More items ({more.length}) <span class="text-muted font-normal">· optional</span></summary>
+			<p class="text-muted mt-2 mb-3 text-sm">
 				Less common services. They stay out of the way until they come due, so only fill in the ones you know.
 			</p>
 			<div class="space-y-3">
@@ -81,5 +81,7 @@
 			</div>
 		</details>
 	{/if}
-	<button class="btn-primary w-full sm:w-auto">Save</button>
+<div class="sticky bottom-[calc(88px+env(safe-area-inset-bottom))] z-10 -mx-4 bg-bg/90 px-4 py-3 backdrop-blur">
+		<button class="btn-primary min-h-12 w-full text-base">Save</button>
+	</div>
 </form>

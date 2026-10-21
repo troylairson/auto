@@ -23,7 +23,7 @@
 
 <svelte:head><title>Add vehicle · Auto</title></svelte:head>
 
-<h1 class="mb-4 text-2xl font-bold">Add a vehicle</h1>
+<h1 class="mb-4 text-[26px] font-bold tracking-tight">Add a vehicle</h1>
 
 <form
 	method="POST"
@@ -51,7 +51,7 @@
 			</select>
 		</div>
 	</div>
-	<p class="muted text-sm">
+	<p class="text-muted text-sm">
 		The schedule is copied onto this vehicle. You can edit any interval afterwards. Items that don't match the
 		drivetrain (e.g. 4x4-only items) are skipped.
 	</p>

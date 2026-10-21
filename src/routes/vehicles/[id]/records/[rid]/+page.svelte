@@ -9,8 +9,8 @@
 <svelte:head><title>Service {r.serviceDate} · {data.vehicle.nickname} · Auto</title></svelte:head>
 
 <a href="/vehicles/{data.vehicle.id}?tab=history" class="link text-sm">← {data.vehicle.nickname} history</a>
-<h1 class="mt-1 text-2xl font-bold">{formatDate(r.serviceDate)}</h1>
-<p class="muted mb-4">
+<h1 class="mt-1 text-[26px] font-bold tracking-tight">{formatDate(r.serviceDate)}</h1>
+<p class="text-muted mb-4">
 	{miles(r.mileage)}{r.vendor ? ` · ${r.vendor}` : ''}{r.minderCode ? ` · Minder ${r.minderCode}` : ''}
 	{data.createdBy ? ` · logged by ${data.createdBy}` : ''}
 </p>
@@ -25,7 +25,7 @@
 		{/each}
 	</ul>
 	{#if r.totalCostCents !== null}
-		<div class="flex justify-between border-t border-slate-200 pt-2 font-semibold dark:border-slate-800">
+		<div class="flex justify-between border-t border-line pt-2 font-semibold">
 			<span>Total</span><span>{money(r.totalCostCents)}</span>
 		</div>
 	{/if}

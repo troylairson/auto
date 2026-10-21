@@ -146,6 +146,8 @@ export type DueResult = {
 	daysLeft: number | null;
 	milesLeft: number | null;
 	oilLifePct: number | null;
+	/** Share of the interval used up, 0–1 (1 = due or past); null when unknown. */
+	progress: number | null;
 	note: string | null;
 };
 
@@ -195,6 +197,17 @@ export function computeDue(item: ItemInput, lastRecord: DoneEvent | null, ctx: D
 	let source: DueResult['source'];
 	let note: string | null = null;
 	let oilLifePct: number | null = null;
+	let progress: number | null = null;
+	if (base && (dueDate || dueMileage !== null)) {
+		const parts: number[] = [];
+		if (dueMileage !== null && base.mileage !== null && miles)
+			parts.push((estimate.mileage - base.mileage) / miles);
+		if (dueDate && base.date) {
+			const span = daysBetween(base.date, dueDate);
+			if (span > 0) parts.push(daysBetween(base.date, today) / span);
+		}
+		if (parts.length) progress = Math.min(1, Math.max(0, ...parts));
+	}
 
 	if (dueDate === null && dueMileage === null) {
 		status = 'unknown';
@@ -226,6 +239,7 @@ export function computeDue(item: ItemInput, lastRecord: DoneEvent | null, ctx: D
 					at5 = addDays(latest.date, Math.ceil((pct - THRESHOLDS.oilLifeDuePct) / perDay));
 				}
 				oilLifePct = Math.max(0, Math.round(projected));
+				progress = Math.min(1, Math.max(0, 1 - projected / 100));
 				const oilStatus: Status =
 					projected <= 0
 						? 'overdue'
@@ -250,6 +264,7 @@ export function computeDue(item: ItemInput, lastRecord: DoneEvent | null, ctx: D
 			const shownFor = daysBetween(latestCode.date, today);
 			status = worse(status, shownFor > THRESHOLDS.soonDays ? 'overdue' : 'due');
 			source = 'minder_code';
+			progress = 1;
 			effectiveDueDate = minDate(effectiveDueDate, latestCode.date);
 			daysLeft = daysBetween(today, effectiveDueDate!);
 			note = `Minder showing ${latestCode.minderCode!.toUpperCase()} since ${formatDate(latestCode.date)}`;
@@ -270,6 +285,7 @@ export function computeDue(item: ItemInput, lastRecord: DoneEvent | null, ctx: D
 		daysLeft: effectiveDueDate ? daysBetween(today, effectiveDueDate) : daysLeft,
 		milesLeft,
 		oilLifePct,
+		progress,
 		note
 	};
 }

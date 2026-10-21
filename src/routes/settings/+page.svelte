@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import UserFields from '$lib/components/UserFields.svelte';
+	import { enhance } from '$app/forms';
 
 	let { data, form } = $props();
 	const msg = (section: string) => (form?.section === section && 'message' in form ? form.message : null);
@@ -11,14 +12,31 @@
 
 <svelte:head><title>Settings · Auto</title></svelte:head>
 
-<h1 class="mb-4 text-2xl font-bold">Settings</h1>
+<h1 class="mb-4 text-[26px] font-bold tracking-tight">Settings</h1>
 
 {#if page.url.searchParams.has('welcome')}
-	<div class="mb-4 rounded-lg bg-sky-100 p-4 text-sm text-sky-900 dark:bg-sky-950 dark:text-sky-200">
+	<div class="mb-4 rounded-lg bg-warn-soft p-4 text-sm text-warn-on-soft">
 		You're set up. Next: add other household logins below, subscribe to your notification topic in the ntfy app,
 		then <a href="/vehicles/new" class="font-semibold underline">add your first vehicle</a>.
 	</div>
 {/if}
+
+<section class="card mb-4 space-y-3">
+	<h2 class="text-lg font-semibold">Appearance</h2>
+	<form method="POST" action="?/theme" class="grid grid-cols-3 rounded-xl bg-seg p-1" use:enhance={({ formData }) => {
+		const t = String(formData.get('theme'));
+		return async ({ update }) => {
+			document.documentElement.dataset.theme = t === 'light' || t === 'dark' ? t : 'auto';
+			await update({ reset: false });
+		};
+	}}>
+		{#each [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']] as [value, label] (value)}
+			<button name="theme" {value} aria-pressed={data.theme === value}
+				class="min-h-10 rounded-[9px] text-sm font-semibold {data.theme === value ? 'bg-panel text-text shadow-sm' : 'text-muted'}">{label}</button>
+		{/each}
+	</form>
+	<p class="text-sm text-muted">Auto follows your phone's light/dark setting.</p>
+</section>
 
 <section class="card mb-4 space-y-4">
 	<h2 class="text-lg font-semibold">You ({data.me.username})</h2>
@@ -31,9 +49,8 @@
 			<label for="ntfyTopic">ntfy topic</label>
 			<input id="ntfyTopic" name="ntfyTopic" value={data.me.ntfyTopic ?? ''} class="font-mono text-sm" />
 			{#if errs('profile').ntfyTopic}<p class="field-error">{errs('profile').ntfyTopic}</p>{/if}
-			<p class="muted mt-1 text-sm">
-				Install the <strong>ntfy</strong> app, tap +, and subscribe to this topic{#if subscribeUrl}
-					(or open <a class="link break-all" href={subscribeUrl}>{subscribeUrl}</a>){/if}. Keep it private: anyone with
+			<p class="text-muted mt-1 text-sm">
+				Install the <strong>ntfy</strong> app, tap +, and subscribe to this topic{#if subscribeUrl}{' '}(or open <a class="link break-all" href={subscribeUrl}>{subscribeUrl}</a>){/if}. Keep it private: anyone with
 				the name can read it.
 			</p>
 		</div>
@@ -44,18 +61,18 @@
 			<button class="btn-primary">Save</button>
 			<button class="btn-secondary" formaction="?/testPush">Send test notification</button>
 		</div>
-		{#if msg('profile')}<p class="text-sm text-green-700 dark:text-green-400">{msg('profile')}</p>{/if}
+		{#if msg('profile')}<p class="text-sm text-ok-text">{msg('profile')}</p>{/if}
 	</form>
 </section>
 
 <section class="card mb-4 space-y-3">
 	<h2 class="text-lg font-semibold">Reminders</h2>
-	<p class="muted text-sm">
+	<p class="text-muted text-sm">
 		Checked every day at 7:00. You get a push when an item becomes due soon (30 days / 1,000 mi), due (7 days / 250
 		mi), or overdue (repeats weekly), plus a nudge when mileage hasn't been updated in 30 days. Sundays add a summary.
 	</p>
 	{#if !data.originConfigured}
-		<p class="text-sm text-orange-700 dark:text-orange-400">ORIGIN isn't set, so notifications won't include a link back to the app.</p>
+		<p class="text-sm text-warn-text">ORIGIN isn't set, so notifications won't include a link back to the app.</p>
 	{/if}
 	<form method="POST" action="?/runReminders">
 		<button class="btn-secondary">Run reminder check now</button>
@@ -65,7 +82,7 @@
 
 <section class="card mb-4 space-y-3">
 	<h2 class="text-lg font-semibold">Calendar feed</h2>
-	<p class="muted text-sm">Subscribe in Google or Apple Calendar to see due dates as all-day events.</p>
+	<p class="text-muted text-sm">Subscribe in Google or Apple Calendar to see due dates as all-day events.</p>
 	<input readonly value={data.calendarUrl} class="font-mono text-xs" onfocus={(e) => (e.target as HTMLInputElement).select()} />
 	<form method="POST" action="?/newCalendarToken">
 		<button class="link text-sm">Make a new link (stops the old one)</button>
@@ -76,7 +93,7 @@
 <section class="card mb-4 space-y-3">
 	<h2 class="text-lg font-semibold">Household</h2>
 	<ul class="text-sm">
-		{#each data.household as u (u.id)}<li>{u.name} <span class="muted">({u.username})</span></li>{/each}
+		{#each data.household as u (u.id)}<li>{u.name} <span class="text-muted">({u.username})</span></li>{/each}
 	</ul>
 	<details open={form?.section === 'household' && 'errors' in form}>
 		<summary class="link cursor-pointer text-sm">+ Add a person</summary>
@@ -85,12 +102,12 @@
 			<button class="btn-primary">Add</button>
 		</form>
 	</details>
-	{#if msg('household')}<p class="text-sm text-green-700 dark:text-green-400">{msg('household')}</p>{/if}
+	{#if msg('household')}<p class="text-sm text-ok-text">{msg('household')}</p>{/if}
 </section>
 
 <section class="card mb-4 space-y-3">
 	<h2 class="text-lg font-semibold">Backups</h2>
-	<p class="muted text-sm">
+	<p class="text-muted text-sm">
 		A copy of the database is saved every night at 3:30 to <code>backups/</code> in the data folder (last 30 kept).
 	</p>
 	<form method="POST" action="?/backup"><button class="btn-secondary">Back up now</button></form>
@@ -111,6 +128,6 @@
 			{#if errs('password').next}<p class="field-error">{errs('password').next}</p>{/if}
 		</div>
 		<button class="btn-primary">Change password</button>
-		{#if msg('password')}<p class="text-sm text-green-700 dark:text-green-400">{msg('password')}</p>{/if}
+		{#if msg('password')}<p class="text-sm text-ok-text">{msg('password')}</p>{/if}
 	</form>
 </section>
